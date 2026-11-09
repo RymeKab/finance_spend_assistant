@@ -406,13 +406,6 @@ A case passes when every hard check passes. The report shows the pass rate overa
 
 - **Online signals** alongside the offline set: thumbs-down rate, decline rate, and unverified-figure warning rate, tracked per prompt version.
 
-## Why it isn't built in this time box
-
-- The brief allows one stretch goal, and for this data pack guardrails (§12) is worth more.
-
-- During the build, the smoke checklist (§11) covers the same questions by hand.
-
-- **Optional and nearly free:** keep the smoke questions in evals/cases.yaml and the P4 pandas checks in evals/reference.py. Then the only new work is run_eval.py, about 30–40 minutes, which is what the README lists as the first next step.
 
 # 13. README write-up plan (half a page)
 
