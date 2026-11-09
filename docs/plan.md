@@ -229,45 +229,6 @@ Two panels: the summary on the left (on top on narrow screens) and the chat on t
 
 **State management:** useReducer over a list of messages keyed by client ID, with an AbortController on unmount. There's no global store, which is all a single-screen prototype needs.
 
-# 10. Build order and time boxes
-
-| **Phase** | **Clock** | **Build**                                                                                                                                          | **Done when**                                                            |
-|-----------|-----------|----------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------|
-| P0        | 0:00–0:15 | Repo skeleton, CLAUDE.md, this plan committed under docs/, ECB rates downloaded                                                                    | Both servers start, and the plan is in git                               |
-| P1        | 0:15–0:45 | Data layer: loader, FX, derived flags, policy parser. Unit tests for FX, tier boundaries and flags.                                                | Tests pass, and the flag counts match profiling (21 / 25 / 29 / 2)       |
-| P2        | 0:45–1:00 | GET /summary, the Pydantic schemas, the error handler                                                                                              | curl returns JSON in the contract shape                                  |
-| P3        | 1:00–1:20 | Frontend shell: the summary panel with all its states, and the chat posting to an /ask that returns a hard-coded placeholder in the contract shape | The click path works end to end, and CORS is sorted                      |
-| P4        | 1:20–1:45 | The four tools, tested against independent pandas one-liners                                                                                       | Every tool returns the expected values for the smoke list                |
-| P5        | 1:45–2:35 | Orchestrator, system prompt v1, submit_answer, evidence builder, citation check, error mapping. Run the smoke list and iterate on the prompt.      | The brief's three questions come back with correct evidence              |
-| P6        | 2:35–3:00 | Evidence UI, status badges, error and retry states                                                                                                 | Every answer shows what it's based on                                    |
-| P7        | 3:00–3:20 | Stretch, guardrails: known-gap handling, the numeric grounding check, adversarial smoke questions                                                  | Declines name the missing field, and out-of-scope questions are declined |
-| P8        | 3:20–3:40 | README write-up, setup steps, time taken, next steps, a run from a clean clone                                                                     | A fresh clone runs by following only the README                          |
-| Buffer    | 3:40–4:00 | Absorbs overruns                                                                                                                                   | —                                                                        |
-
-## Why this order
-
-- **Deterministic before probabilistic.** The LLM can only be as good as the tools it calls. With the tools tested first, a bad answer points to the prompt, not a data bug.
-
-- **/summary early.** It's the first thing reviewers see, it needs no LLM, and it exercises the whole data layer.
-
-- **A thin end-to-end slice by 1:20.** Integration problems (CORS, ports, types) surface while there's still time to fix them.
-
-- **Evidence UI after the real /ask**, so it renders real response shapes.
-
-- **The stretch goal comes last** because it builds on the status enum and validators already in place.
-
-- **The README gets its own time box.** Written reasoning is a scored area, not an afterthought.
-
-## Checkpoints and cut-line
-
-- **At 1:45:** if the tools aren't finished, drop lookup_vendors and fold fuzzy name matching into the filters.
-
-- **At 2:35:** if /ask isn't reliably grounded on the brief's three questions, skip the stretch and spend P7 fixing it.
-
-- **Cut in this order:** (1) Docker Compose, which is only attempted if buffer remains; (2) the numeric grounding check; (3) the real ECB rates, falling back to static labelled rates; (4) guardrail polish, keeping the status enum and prompt rules.
-
-- **Never cut:** server-built evidence, /summary, loading and error states, the README write-up, the setup instructions.
-
 # 11. Smoke-question checklist
 
 This list is used throughout P4–P7 and doubles as the demo script. Expected values come from independent pandas code, never from the tool layer, so the check isn't circular. It's a manual checklist, not the scored eval set (see §13).
