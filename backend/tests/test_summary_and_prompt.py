@@ -26,6 +26,13 @@ def test_summary_reports_fx_basis_and_lineage(dataset):
     assert len(summary["source_files"]) == 4
 
 
+def test_system_prompt_states_the_domain_gaps(dataset, policy):
+    prompt = build_system_prompt(dataset, policy, max_rounds=4)
+    assert 'A reporting ("as of") date' in prompt  # §6.1 90-day rule
+    assert "Vendor status history" in prompt  # §4.1
+    assert "Invoice / PO Value" in prompt  # §3
+
+
 def test_system_prompt_is_complete(dataset, policy):
     prompt = build_system_prompt(dataset, policy, max_rounds=4)
     assert "{{" not in prompt

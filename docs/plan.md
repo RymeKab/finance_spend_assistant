@@ -229,6 +229,7 @@ Two panels: the summary on the left (on top on narrow screens) and the chat on t
 
 **State management:** useReducer over a list of messages keyed by client ID, with an AbortController on unmount. There's no global store, which is all a single-screen prototype needs.
 
+
 # 10. Smoke-question checklist
 
 This list is used throughout P4–P7 and doubles as the demo script. Expected values come from independent pandas code, never from the tool layer, so the check isn't circular. It's a manual checklist, not the scored eval set (see §13).
@@ -406,6 +407,13 @@ A case passes when every hard check passes. The report shows the pass rate overa
 
 - **Online signals** alongside the offline set: thumbs-down rate, decline rate, and unverified-figure warning rate, tracked per prompt version.
 
+## Why it isn't built in this time box
+
+- The brief allows one stretch goal, and for this data pack guardrails (§12) is worth more.
+
+- During the build, the smoke checklist (§11) covers the same questions by hand.
+
+- **Optional and nearly free:** keep the smoke questions in evals/cases.yaml and the P4 pandas checks in evals/reference.py. Then the only new work is run_eval.py, about 30–40 minutes, which is what the README lists as the first next step.
 
 # 13. README write-up plan (half a page)
 

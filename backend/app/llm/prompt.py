@@ -1,13 +1,13 @@
 """
 Builds the system prompt (Claude's standing instructions) from the template file.
 
-The template lives in prompts/system_v2.md, so it can be read and reviewed like
+The template lives in prompts/system_v3.md, so it can be read and reviewed like
 any other document. This module only fills in the {{PLACEHOLDERS}}: the full
 policy text with clause anchors, the date range, and the values Claude can
 filter on.
 
 PROMPT_VERSION goes out with every response and into the audit log. If the
-prompt changes, bump the version (system_v3.md, "ask-v3"), so every answer can
+prompt changes, bump the version (system_v4.md, "ask-v4"), so every answer can
 be traced back to the exact instructions that produced it.
 """
 
@@ -19,9 +19,11 @@ from app.data.loader import Dataset
 from app.policy.parser import Policy
 
 # v2: credit notes reported separately, not netted (§6.1); PO breach only from EUR 1,000 (§2.1).
-# v1 is kept in prompts/ so older audit-log entries can still be traced to their exact prompt.
-PROMPT_VERSION = "ask-v2"
-TEMPLATE_PATH = Path(__file__).parent / "prompts" / "system_v2.md"
+# v3: three gaps between the data and the policy are stated, never guessed: no reporting date
+#     (the §6.1 90-day rule), vendor status is today's only (§4.1), bands use the invoice amount (§3).
+# Older versions are kept in prompts/ so older audit-log entries can still be traced to their exact prompt.
+PROMPT_VERSION = "ask-v3"
+TEMPLATE_PATH = Path(__file__).parent / "prompts" / "system_v3.md"
 
 
 def _listing(values) -> str:

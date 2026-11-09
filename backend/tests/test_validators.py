@@ -1,5 +1,7 @@
 """Numeric grounding: figures are recognised, identifiers are ignored, rounding is allowed."""
 
+import pytest
+
 from app.validators import extract_figures, ungrounded_figures
 
 
@@ -44,3 +46,25 @@ def test_figures_from_the_question_and_policy_count_as_sources():
     policy = "| 50,000.01 – 250,000 | Finance Director |"
     answer = "EUR 60,000 falls in the 50,000.01 – 250,000 band."
     assert ungrounded_figures(answer, [question, policy]) == []
+
+# Invoice numbers are IDs, not amounts, however Claude writes them.
+@pytest.mark.parametrize(
+    "answer",
+    [
+        "INV-20073 has no approver.",
+        "INV\u201120073 has no approver.",  # non-breaking hyphen (looks identical)
+        "INV\u201320073 has no approver.",  # en dash
+        "INV 20073 has no approver.",
+        "**INV**-20073 has no approver.",
+        "Invoices INV-20038, 20073 have no approver.",  # prefix written once
+    ],
+)
+def test_invoice_numbers_are_never_mistaken_for_figures(answer):
+    sources = [{"rows": [{"invoice_number": "INV-20073"}, {"invoice_number": "INV-20038"}]}]
+    assert ungrounded_figures(answer, sources) == []
+
+
+def test_a_bare_number_counts_as_an_id_only_if_that_id_is_in_the_results():
+    sources = [{"rows": [{"invoice_number": "INV-20073"}]}]
+    assert ungrounded_figures("Invoice 20074 has no approver.", sources) == ["20074"]
+    assert ungrounded_figures("It cost EUR 20,073.00.", sources) == ["20,073.00"]  # amounts are still checked

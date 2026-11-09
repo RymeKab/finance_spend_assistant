@@ -16,7 +16,7 @@ from app.data.loader import Dataset
 CONTROL_FLAGS = (
     ("missing_required_po", "No PO reference on an invoice of EUR 1,000+", "2.1–2.3"),
     ("missing_approver", "No approver recorded (must be held)", "3.1"),
-    ("vendor_not_active", "Vendor INACTIVE or ON_HOLD (escalate)", "4.1"),
+    ("vendor_not_active", "Vendor currently INACTIVE or ON_HOLD (escalate)", "4.1"),
     ("is_credit_note", "Unmatched credit notes (not subtracted)", "6.1"),
 )
 

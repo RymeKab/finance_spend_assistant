@@ -84,6 +84,7 @@ follow." (The brief, data pack and policy were attached.)
 
 The runtime prompt the app sends to Claude is a separate, reviewed file: `backend/app/llm/prompts/system_v2.md` (version `ask-v2`). `system_v1.md` is kept so the change can be compared.
 
+
 ## 3. What was checked while the code was generated
 
 | Check | Result |
@@ -103,12 +104,12 @@ The runtime prompt the app sends to Claude is a separate, reviewed file: `backen
 - **React 19** instead of 18: the current major version; nothing in the app depends on the difference.
 - **How Claude is called:** the plan assumed a forced final tool call and temperature 0. The docs for the current default model (`claude-sonnet-5-5`) say it rejects forced `tool_choice` and sampling parameters with HTTP 400, and thinks by default. The orchestrator therefore uses `tool_choice: auto`, a **strict** `submit_answer` tool, no temperature, an `effort` setting, and passes thinking blocks back. A reply without a submit_answer call is sent back for correction.
 - **Prompt v2:** the overrides in section 5 changed what Claude is told about spend and missing POs, so the prompt moved from `ask-v1` to `ask-v2` instead of being edited in place (CLAUDE.md rule 5). Every answer and audit-log entry records which version produced it.
+- **Prompt v3:** a review of the deliverables found three places where the policy relies on information the data doesn't have: a reporting date for the §6.1 90-day rule, vendor status history for §4.1, and PO values for the §3 bands. One test answer had guessed a date for the 90-day rule. All three are now in the prompt's list of what the data does not contain, stated as assumptions when an answer relies on them, and ages are counted by `find_invoices` (`as_of`) only for a date the user gives.
 - **Independent review:** a second AI pass reviewed the code that couldn't be run here (FastAPI layer, SDK error mapping). Its findings were fixed: CORS headers on 500 responses, the unknown-model error mapping, an overall deadline per question, no raw error text sent to the browser, and async `/health` and `/summary`.
 
 ## 5. Where I overrode or corrected the AI
 
-I asked the AI to critique its own design against the policy, then decided which points to act on. Three changed the behaviour; two more came from my own review: the exchange rates, from the data, and the summary's figures, from testing the UI. Each one is pinned by a test or a documented check, so it can't quietly come back.
-
+I asked the AI to critique its own design against the policy, then decided which points to act on. Three changed the behaviour; a fourth, the exchange rates, came from my own review of the data. Each one is pinned by a test, so it can't quietly come back.
 
 ### Override 1: credit notes are no longer netted from spend (§6.1)
 
@@ -142,7 +143,6 @@ I asked the AI to critique its own design against the policy, then decided which
 - **Effect.** Small, but now exact: spend moves by EUR 840 (to EUR 6,964,721.16), the credit notes to EUR -78,090.06, and no invoice changes approval band or PO requirement. The two FX examples still cross a band (INV-20065 is EUR 54,185.32, INV-20071 is EUR 49,127.10).
 - **Files.** `data/ecb_eur_rates_2025.csv` (new), `data/fx.py`, `data/loader.py`, `summary.py`, `schemas.py`, `frontend/src/lib/types.ts`, `components/SummaryPanel.tsx`, `tests/reference.py`; removed `data/fx_rates_2025.csv` and `scripts/fetch_ecb_rates.py`.
 - **Tests.** `test_invoice_uses_the_ecb_rate_of_its_own_date` (INV-20096 at 1.1655), `test_weekends_and_holidays_use_the_previous_business_day`, `test_ecb_file_is_read_as_downloaded` (`test_fx.py`). The test that checked a grounded answer had the Spain total written into it; it now reads the figure from the tool, so it holds whatever the rates are.
-
 
 ### Override 5: rounded figures in the summary, with the exact amount one step away
 

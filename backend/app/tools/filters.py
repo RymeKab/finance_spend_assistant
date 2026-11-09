@@ -31,7 +31,9 @@ class InvoiceFilters(BaseModel):
     vendor_ids: list[str] | None = Field(None, description="Exact vendor IDs, e.g. ['V-1002'].")
     vendor_name_contains: str | None = Field(None, description="Case-insensitive part of a vendor name, e.g. 'labtech'.")
     countries: list[str] | None = Field(None, description="Vendor countries as in the vendor master, e.g. ['Spain'].")
-    vendor_statuses: list[VendorStatus] | None = Field(None, description="Vendor master status.")
+    vendor_statuses: list[VendorStatus] | None = Field(
+        None, description="Vendor status as in the vendor master today (the data has no status history)."
+    )
     currencies: list[Currency] | None = Field(None, description="Original invoice currency.")
     cost_centers: list[str] | None = Field(None, description="Cost centre codes, e.g. ['CC-IT-550'].")
     approvers: list[str] | None = Field(None, description="Values of approved_by, e.g. ['j.smith'].")
@@ -45,7 +47,9 @@ class InvoiceFilters(BaseModel):
         None, description="true = only invoices of EUR 1,000+ with no PO reference: the actual §2.1 breach."
     )
     has_approver: bool | None = Field(None, description="true = only invoices WITH an approver; false = only WITHOUT.")
-    vendor_not_active: bool | None = Field(None, description="true = only vendors that are INACTIVE or ON_HOLD.")
+    vendor_not_active: bool | None = Field(
+        None, description="true = only vendors that are INACTIVE or ON_HOLD today (the data has no status history)."
+    )
     is_credit_note: bool | None = Field(None, description="true = only credit notes (negative amounts); false = exclude them.")
 
     def apply(self, invoices: pd.DataFrame) -> pd.DataFrame:
@@ -124,7 +128,7 @@ class InvoiceFilters(BaseModel):
             (self.has_po_ref, "has a PO reference", "no PO reference"),
             (self.missing_required_po, "no PO reference although EUR 1,000+ (§2.1)", "PO requirement met"),
             (self.has_approver, "has an approver", "no approver recorded"),
-            (self.vendor_not_active, "vendor INACTIVE or ON_HOLD", "vendor ACTIVE"),
+            (self.vendor_not_active, "vendor currently INACTIVE or ON_HOLD", "vendor currently ACTIVE"),
             (self.is_credit_note, "credit notes only", "credit notes excluded"),
         ):
             if value is not None:

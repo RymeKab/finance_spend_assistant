@@ -125,11 +125,38 @@ def _data_entry(query: ToolResult, dataset: Dataset) -> dict[str, Any]:
     }
 
 
+# Gaps between the data and the policy, stated whenever an answer relies on them.
+VENDOR_STATUS_ASSUMPTION = (
+    "Vendor status is the vendor master's current status. The data has no status history, so it can't show "
+    "whether a vendor was ACTIVE when an invoice was processed (§4.1)."
+)
+APPROVAL_BAND_ASSUMPTION = (
+    "Approval bands use the invoice's EUR amount. The §3 table refers to \"Invoice / PO Value\", but PO values "
+    "aren't in the data, so a band based on the PO can't be checked."
+)
+
+
+def _uses_vendor_status(query: ToolResult) -> bool:
+    filters = query.params.get("filters", {}) or {}
+    return (query.tool == "lookup_vendors" or "vendor_statuses" in filters or "vendor_not_active" in filters
+            or query.params.get("group_by") == "vendor_status")
+
+
 def _standard_assumptions(queries: list[ToolResult], dataset: Dataset) -> list[str]:
     """Assumptions the server adds whenever they apply, so they're never forgotten."""
     assumptions: list[str] = []
     if any(q.tool in SPEND_TOOLS for q in queries):
         assumptions.append(f"Non-EUR amounts are converted to EUR (policy §5.1) using {dataset.fx.basis_description}.")
+    if any(_uses_vendor_status(q) for q in queries):
+        assumptions.append(VENDOR_STATUS_ASSUMPTION)
+    if any(q.tool == "approval_requirement" and any("required_approver" in r for r in q.rows) for q in queries):
+        assumptions.append(APPROVAL_BAND_ASSUMPTION)
+    for query in queries:
+        if query.tool == "find_invoices" and query.params.get("as_of"):
+            assumptions.append(
+                f"Ages are counted to {query.params['as_of']}, the date given in the question. "
+                "The data has no reporting date of its own."
+            )
     for query in queries:
         if query.tool != "query_spend":
             continue

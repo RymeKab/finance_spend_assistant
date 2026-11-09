@@ -84,7 +84,7 @@ When the data can't answer a question, the assistant says so. For example, "Were
 | If you want to understand… | Read |
 |---|---|
 | How the data is prepared (EUR conversion, control flags) | `backend/app/data/loader.py` |
-| What Claude is told | `backend/app/llm/prompts/system_v2.md` |
+| What Claude is told | `backend/app/llm/prompts/system_v3.md` |
 | The conversation loop with Claude | `backend/app/llm/orchestrator.py` |
 | How evidence is built and checked | `backend/app/evidence.py`, `backend/app/validators.py` |
 | The four calculators | `backend/app/tools/` |
@@ -141,7 +141,7 @@ How one `POST /ask` request flows (the numbers match the diagram):
 | `app/policy/approval.py` | The §3 approval bands, with exact edges |
 | `app/tools/` | `query_spend`, `find_invoices`, `lookup_vendors`, `approval_requirement`, with validated parameters |
 | `app/llm/orchestrator.py` | The loop with Claude: bounded rounds, a strict final-answer tool, up to two corrective retries, an overall deadline |
-| `app/llm/prompts/system_v2.md` | The versioned system prompt (`ask-v2`; `system_v1.md` is kept for comparison) |
+| `app/llm/prompts/system_v3.md` | The versioned system prompt (`ask-v3`; earlier versions are kept for comparison) |
 | `app/evidence.py` | The only place where evidence is created |
 | `app/validators.py` | Numeric grounding check |
 | `app/assistant.py` | Ties it together: health, summary, ask, audit log |
@@ -250,7 +250,9 @@ Five layers keep answers grounded:
 | Requester | §7.1, §7.2 segregation of duties | *Were any invoices self-approved?* → `insufficient_data` |
 | Approver role and limit | §3 authority | *Did m.garcia have authority to approve INV-20003?* → names the required level and says authority can't be confirmed |
 | Link from a credit note to its original invoice | §6.1 matching | *Which credit notes are unmatched?* → `partial` |
-| PO issue date and PO value | §2.1 "before the work", §2.3 blanket PO | → `insufficient_data` or `partial` |
+| PO issue date and PO value | §2.1 "before the work", §2.3 blanket PO; §3 bands by "Invoice / PO Value" | → `insufficient_data` or `partial`; approval answers state that bands use the invoice amount |
+| A reporting ("as of") date | §6.1 escalate unmatched credit notes older than 90 days | *Which credit notes are over 90 days old?* → asks for a date; with one, ages come from `find_invoices` (`as_of`) |
+| Vendor status history | §4.1 only pay ACTIVE vendors | Status is labelled "currently"; answers state that it may not be the status when the invoice was processed |
 | Receipt and payment dates | §5.2 payment terms | → `insufficient_data` |
 | Exception Register | §9.1 emergency exceptions | → `insufficient_data` |
 | Due diligence, bank-detail changes | §4.2, §4.3 | → `insufficient_data` |
@@ -270,7 +272,7 @@ When a result reveals a control issue, the answer names the action the policy re
 | Two credit notes (INV-20029, INV-20096, both Helix Consulting AG, EUR -78,090.06), not linked to any original | Not subtracted from spend (§6.1 requires matching first). Shown separately in totals, next to their vendor in breakdowns, and in an assumption on every spend answer. A net figure is given only when the user asks for one |
 | 21 invoices have no PO reference, 10 of them for cloud hosting or facilities (§2.3 blanket POs) | Flagged as a §2.1 exception only when the invoice is EUR 1,000 or more after conversion (`missing_required_po`). All 21 happen to be above the threshold, and a test proves that a smaller invoice would not be flagged. Reported as "no PO reference on the invoice", with the blanket-PO caveat |
 | 25 invoices have no approver | Flagged under §3.1: must be held |
-| 29 invoices come from PharmaPrint Studios (INACTIVE) or Crown Travel Partners (ON_HOLD) | Included in spend and called out under §4.1: escalate |
+| 29 invoices come from PharmaPrint Studios (INACTIVE) or Crown Travel Partners (ON_HOLD) | Included in spend and called out under §4.1: escalate. The vendor master gives today's status only, so these are vendors *currently* not active; the data can't show their status when each invoice was processed |
 
 **Exchange rates.** The data pack has no exchange rates, so I downloaded the official ECB euro reference rates for every business day of 2025 and added them as `data/ecb_eur_rates_2025.csv`, unchanged. Each invoice uses the rate for its own date; the 16 GBP and USD invoices dated on a weekend or ECB holiday use the previous business day's rate. Every answer states this, and the file's SHA-256 fingerprint is in `/summary` and the audit log. See [data/SOURCES.md](data/SOURCES.md).
 
@@ -327,10 +329,10 @@ cd backend && pytest
 | `test_approval.py` | Exact band edges (5,000.00 vs 5,000.01, and so on); bands match the policy text; FX moves INV-20065 and INV-20071 across a band; the EUR 1,000 PO threshold matches §2.1 |
 | `test_loader.py` | Row and currency counts; control-flag counts (21 / 25 / 29 / 2); a missing PO under EUR 1,000 is not a breach; credit notes never need a PO; lineage fingerprints |
 | `test_policy_parser.py` | All clauses found, verbatim; loose references such as "§ 3.1" understood |
-| `test_tools.py` | All four tools match the independent reference; credit notes are not subtracted by default, appear next to their vendor, and are netted only on request; bad parameters become clear errors, not crashes |
+| `test_tools.py` | All four tools match the independent reference; credit notes are not subtracted by default, appear next to their vendor, and are netted only on request; invoice ages are counted only to a date the user gives; bad parameters become clear errors, not crashes |
 | `test_validators.py` | Figures are parsed, identifiers are ignored, rounding is allowed, invented numbers are caught |
-| `test_ask_flow.py` | The whole question flow with a scripted fake Claude, including every safety net (an invented figure turns Answered into Partial) and the audit log |
-| `test_summary_and_prompt.py` | Summary totals add up (invoices only, credit notes separate); the system prompt is fully filled in |
+| `test_ask_flow.py` | The whole question flow with a scripted fake Claude, including every safety net (an invented figure turns Answered into Partial), the data gaps stated as assumptions, and the audit log |
+| `test_summary_and_prompt.py` | Summary totals add up (invoices only, credit notes separate); the system prompt is fully filled in and lists the data gaps |
 | `test_llm_setup.py` | The strict final-answer schema, tool-schema generation, and the mapping of Claude SDK errors to API errors |
 | `test_api.py` | HTTP layer: status codes, error shape, request IDs, CORS on errors (needs FastAPI and httpx, both in requirements) |
 
@@ -360,7 +362,7 @@ cd backend && pytest
 │   │   ├── data/                 # loader.py, fx.py
 │   │   ├── policy/               # parser.py, approval.py
 │   │   ├── tools/                # filters, query_spend, find_invoices, lookup_vendors, approval_requirement
-│   │   └── llm/                  # orchestrator.py, client.py, prompt.py, submission.py, prompts/system_v2.md
+│   │   └── llm/                  # orchestrator.py, client.py, prompt.py, submission.py, prompts/system_v3.md
 │   └── tests/                    # unit, flow and API tests + fake Claude + independent reference
 └── frontend/
     ├── package.json  vite.config.ts  tsconfig.json  index.html
@@ -377,19 +379,17 @@ cd backend && pytest
 
 - I wrote the plan first (`docs/plan.md`), then built against it with an AI coding assistant. `docs/ai-workflow.md` records the prompts, what was checked and what was changed by hand.
 - `CLAUDE.md` gives the assistant the non-negotiables: the LLM never computes numbers, evidence is only created in `evidence.py`, every tool has tests, and the contract is changed in both `schemas.py` and `types.ts`.
-- The runtime prompt is a reviewed, versioned file (`system_v2.md`, `ask-v2`), and its version is returned with every answer.
+- The runtime prompt is a reviewed, versioned file (`system_v3.md`, `ask-v3`), and its version is returned with every answer.
 - I reviewed the generated design against the policy and changed four things by hand: credit notes are no longer netted (§6.1), a missing PO counts only from EUR 1,000 (§2.1), an unverified figure downgrades the answer to Partial, and the AI's placeholder exchange rates were replaced by the official ECB file I downloaded (§5.1). Each change has a test; see `docs/ai-workflow.md` §5.
 - The contracts (schemas, tool signatures, system prompt, evidence rules) were fixed in the plan before any code was generated. Generated code is checked by the test suite and reviewed before it is committed.
 
 ---
 
-## Time taken and next steps
-
-**Time taken:** 4h, against a 3–4 hour time box.
+## Next steps
 
 **What I'd do next, in order:**
 
-1. Build the eval runner (`evals/run_eval.py`) from the design in `docs/plan.md` §13
+1. Build the eval runner (`evals/run_eval.py`) from the design in `docs/plan.md` §13.
 2. Add text-to-SQL behind a read-only allow-list, with the SQL shown as evidence.
 3. Add an approver-role mapping, so the assistant can verify authority (§3) instead of only naming the required level.
 4. Generate the TypeScript types from the OpenAPI schema, so the contract can't drift.

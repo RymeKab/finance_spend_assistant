@@ -46,6 +46,14 @@ _NUMBER = re.compile(
 )
 _MULTIPLIERS = {"k": 1e3, "K": 1e3, "thousand": 1e3, "m": 1e6, "M": 1e6, "mn": 1e6, "million": 1e6, "bn": 1e9, "billion": 1e9}
 
+# Claude sometimes writes "INV‑20073" with a look-alike dash (non-breaking hyphen, en dash...)
+# or a non-breaking space. Turn them into the plain characters before looking for IDs.
+_LOOKALIKES = str.maketrans({"\u2010": "-", "\u2011": "-", "\u2012": "-", "\u2013": "-", "\u2014": "-",
+                             "\u2212": "-", "\u00a0": " "})
+# An ID's number, e.g. "20073" in "INV-20073", used to recognise IDs written without their prefix.
+_ID_NUMBER = re.compile(r"\b[A-Za-z]{1,4}(?:-[A-Za-z]{1,4})*-(\d+)\b")
+
+
 SMALL_INTEGER_LIMIT = 12  # whole numbers up to this are treated as counts/ranks, not figures
 RELATIVE_TOLERANCE = 0.005  # 0.5%
 
@@ -58,9 +66,24 @@ class Figure:
 
 
 def _strip_noise(text: str) -> str:
+    # Look-alike dashes become "-", and bold/code markers go ("**INV**-20073" -> "INV-20073").
+    text = text.translate(_LOOKALIKES).replace("*", "").replace("`", "")
+    text = re.sub(r"\b(INV|PO)\s+(\d+)\b", r"\1-\2", text)  # "INV 20073" -> "INV-20073"
     for pattern in _NOISE:
         text = pattern.sub(" ", text)
     return text
+
+
+def _all_strings(node: Any) -> Iterable[str]:
+    """Every piece of text inside nested dicts and lists."""
+    if isinstance(node, str):
+        yield node
+    elif isinstance(node, dict):
+        for item in node.values():
+            yield from _all_strings(item)
+    elif isinstance(node, (list, tuple, set)):
+        for item in node:
+            yield from _all_strings(item)
 
 
 def extract_figures(text: str, *, skip_trivial: bool = True) -> list[Figure]:
@@ -103,9 +126,14 @@ def known_values(sources: Iterable[Any]) -> list[float]:
 
 def ungrounded_figures(answer: str, sources: Iterable[Any]) -> list[str]:
     """Figures in `answer` that match nothing in `sources`. An empty list means fully grounded."""
+    sources = list(sources)
     trusted = known_values(sources)
+    # Numbers of the IDs in the results (INV-20073 -> "20073"): a bare "20073" in the answer is that ID, not an amount.
+    id_numbers = {m.group(1) for text in _all_strings(sources) for m in _ID_NUMBER.finditer(text.translate(_LOOKALIKES))}
     missing: list[str] = []
     for figure in extract_figures(answer):
+        if figure.raw.isdigit() and figure.raw in id_numbers:
+            continue
         target = abs(figure.value)
         grounded = any(abs(target - v) <= max(figure.precision, RELATIVE_TOLERANCE * v) for v in trusted)
         if not grounded and figure.raw not in missing:

@@ -22,7 +22,7 @@ function Amount({ value, currency }: { value: number; currency: string }) {
     // tabIndex makes it reachable by keyboard and tappable on phones (focus shows the tooltip).
     <span className="amount" tabIndex={0}>
       <span aria-hidden="true">{formatCompact(value)}</span>
-       <span className="amount-tip" aria-hidden="true">{exact}</span>
+      <span className="amount-tip" aria-hidden="true">{exact}</span>
       <span className="visually-hidden">{exact}</span>
     </span>
   );

@@ -116,6 +116,31 @@ def test_a_grounded_answer_keeps_its_status(settings):
     assert response["warnings"] == [] and response["status"] == "answered"
 
 
+# Domain gaps: stated whenever an answer relies on them, never left for the model to guess.
+def test_vendor_status_and_approval_band_gaps_are_stated(settings):
+    assistant, _ = make_assistant(settings, [
+        [tool_use("find_invoices", {"filters": {"vendor_not_active": True}}),
+         tool_use("approval_requirement", {"invoice_number": "INV-20071"})],
+        [submit(status="answered", answer="The details are in the evidence.", data_refs=["q1", "q2"])],
+    ])
+    response = assistant.ask("Which invoices come from inactive vendors, and who approves INV-20071?", "req-6c")
+    assert any("no status history" in a for a in response["assumptions"])  # §4.1: today's status only
+    assert any("Invoice / PO Value" in a for a in response["assumptions"])  # §3: no PO values
+
+
+def test_ages_from_the_tool_are_grounded_when_a_date_is_given(settings):
+    assistant, _ = make_assistant(settings, [
+        [tool_use("find_invoices", {"filters": {"is_credit_note": True}, "as_of": "2025-12-31"})],
+        [submit(status="answered",
+                answer="As of 31 December 2025, INV-20096 is 72 days old and INV-20029 is 48 days old, "
+                       "so neither is over 90 days (§6.1).",
+                data_refs=["q1"], policy_refs=["6.1"])],
+    ])
+    response = assistant.ask("Were any unmatched credit notes older than 90 days on 31 December 2025?", "req-6d")
+    assert response["warnings"] == [] and response["status"] == "answered"  # 72 and 48 come from the tool
+    assert any("counted to 2025-12-31" in a for a in response["assumptions"])
+
+
 def test_tool_errors_go_back_to_claude(settings):
     assistant, fake = make_assistant(settings, [
         [tool_use("query_spend", {"group_by": "planet"})],

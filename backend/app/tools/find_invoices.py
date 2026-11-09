@@ -8,10 +8,17 @@ Answers questions like:
 
 Returns at most `limit` rows (50 at most) to keep answers readable. It always
 reports how many invoices matched in total, so nothing is silently cut off.
+
+Invoice ages ("older than 90 days", policy §6.1)
+------------------------------------------------
+The data has no reporting ("as of") date, so an age can't be worked out on its
+own. When the user gives a date, Claude passes it as `as_of` and each row gets
+`age_days`, counted here in code. Claude never counts days itself.
 """
 
 from __future__ import annotations
 
+import datetime as dt
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -37,6 +44,11 @@ class FindInvoicesInput(BaseModel):
     filters: InvoiceFilters = Field(default_factory=InvoiceFilters, description="Which invoices to list.")
     sort: Literal["date_asc", "date_desc", "amount_desc", "amount_asc"] = Field("date_asc", description="Row order.")
     limit: int = Field(25, ge=1, le=50, description="Maximum number of rows to return.")
+    as_of: dt.date | None = Field(
+        None,
+        description="Reference date for invoice ages (YYYY-MM-DD). Only when the user gives one: the data has no "
+                    "reporting date. Each row then gets age_days.",
+    )
 
 
 def invoice_rows(frame, columns: list[str] = INVOICE_COLUMNS) -> list[dict]:
@@ -66,6 +78,15 @@ def run_find_invoices(params: FindInvoicesInput, dataset: Dataset, query_id: str
     }[params.sort]
     matched = matched.sort_values(order[0], ascending=order[1], kind="stable")
     shown = matched.head(params.limit)
+    columns = INVOICE_COLUMNS
+    notes: list[str] = []
+    if params.as_of is not None:
+        # Ages are counted in code, to the date the user gave (never to "today").
+        shown = shown.assign(age_days=[(params.as_of - d).days for d in shown["invoice_date"]])
+        columns = INVOICE_COLUMNS + ["age_days"]
+        after = int((matched["invoice_date"] > params.as_of).sum())
+        if after:
+            notes.append(f"{after} matching invoice(s) are dated after {params.as_of.isoformat()}, so their age is negative.")
 
     total = int(len(matched))
     shown_phrase = f"showing {len(shown)} of {total}" if len(shown) < total else f"{total} found"
@@ -73,17 +94,19 @@ def run_find_invoices(params: FindInvoicesInput, dataset: Dataset, query_id: str
         "date_asc": "oldest first", "date_desc": "newest first",
         "amount_desc": "highest EUR amount first", "amount_asc": "lowest EUR amount first",
     }[params.sort]
+    age_phrase = f", ages counted to {params.as_of.isoformat()}" if params.as_of is not None else ""
     return ToolResult(
         query_id=query_id,
         tool="find_invoices",
         params=params.model_dump(mode="json", exclude_none=True),
-        description=f"List of invoices ({shown_phrase}), {sort_phrase}. Filters: {params.filters.describe()}.",
-        rows=invoice_rows(shown),
+        description=f"List of invoices ({shown_phrase}), {sort_phrase}{age_phrase}. Filters: {params.filters.describe()}.",
+        rows=invoice_rows(shown, columns),
         totals={
             "matching_invoices": total,
             "rows_returned": int(len(shown)),
             "invoices_eur": round(float(matched.loc[~matched["is_credit_note"], "amount_eur"].sum()), 2),
             "credit_notes_eur": round(float(matched.loc[matched["is_credit_note"], "amount_eur"].sum()), 2),
         },
+        notes=notes,
         invoice_numbers=list(matched["invoice_number"]),
     )

@@ -82,6 +82,21 @@ def test_find_invoices_reports_the_full_count_when_limited(dataset):
     assert "showing 5 of 29" in result.description
 
 
+# Domain gap: the data has no reporting date, so ages are only counted to a date the user gives.
+def test_invoice_ages_need_an_as_of_date(dataset):
+    plain = run_tool("find_invoices", {"filters": {"is_credit_note": True}}, dataset, "q1")
+    assert all("age_days" not in row for row in plain.rows)
+    dated = run_tool("find_invoices", {"filters": {"is_credit_note": True}, "as_of": "2025-12-31"}, dataset, "q1")
+    ages = {row["invoice_number"]: row["age_days"] for row in dated.rows}
+    assert ages == {"INV-20096": 72, "INV-20029": 48}  # neither is over 90 days at the end of 2025
+    assert "ages counted to 2025-12-31" in dated.description
+
+
+def test_invoices_dated_after_the_as_of_date_are_pointed_out(dataset):
+    result = run_tool("find_invoices", {"filters": {"is_credit_note": True}, "as_of": "2025-11-01"}, dataset, "q1")
+    assert any("dated after 2025-11-01" in note for note in result.notes)  # INV-20029 is from 13 November
+
+
 # -------------------------------------------------------------------- lookup_vendors
 def test_lookup_vendors_by_country(dataset):
     result = run_tool("lookup_vendors", {"countries": ["Spain"]}, dataset, "q1")

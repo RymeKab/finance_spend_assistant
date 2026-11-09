@@ -49,7 +49,9 @@ DATA_TOOLS: dict[str, ToolSpec] = {
             "find_invoices",
             "List individual invoices that match filters, with their control flags "
             "(no PO reference on an invoice of EUR 1,000+, missing approver, vendor not active, credit note) and approval band. "
-            "Use for 'which invoices...' questions and to look up specific invoices.",
+            "Use for 'which invoices...' questions and to look up specific invoices. "
+            "To answer questions about age (e.g. credit notes older than 90 days, §6.1), set as_of to the date the "
+            "user gives; each row then gets age_days. Never assume a date.",
             FindInvoicesInput,
             run_find_invoices,
         ),

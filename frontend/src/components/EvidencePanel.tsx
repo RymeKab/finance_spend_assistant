@@ -22,7 +22,8 @@ function withFlags(invoices: Row[]): Row[] {
       invoice.missing_required_po && "No PO, EUR 1,000+ (§2.1)",
       invoice.missing_po_ref && !invoice.missing_required_po && !invoice.is_credit_note && "No PO, under EUR 1,000 (allowed)",
       invoice.missing_approver && "No approver (§3.1)",
-      invoice.vendor_not_active && `Vendor ${invoice.vendor_status} (§4.1)`,
+      // Vendor status is today's status (no history in the data), hence "currently".
+      invoice.vendor_not_active && `Vendor currently ${invoice.vendor_status} (§4.1)`,
       invoice.is_credit_note && "Credit note (§6.1)",
     ].filter(Boolean);
     return { ...invoice, flags: flags.join(" · ") || null };

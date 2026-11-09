@@ -50,6 +50,7 @@ const LABELS: Record<string, string> = {
   unmatched_credit_notes_eur: "Unmatched credit notes (EUR)",
   missing_required_po: "No PO, EUR 1,000+",
   missing_po_ref: "No PO ref",
+  age_days: "Age (days)",
 };
 
 export function columnLabel(key: string): string {
