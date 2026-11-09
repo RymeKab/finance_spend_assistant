@@ -444,7 +444,7 @@ A case passes when every hard check passes. The report shows the pass rate overa
 
 **Also in the README:** time taken, and next steps (the eval runner from §13, text-to-SQL behind an allow-list, an approver-role mapping, OpenAPI-generated TypeScript types, Docker Compose, vendor and category anomaly detection).
 
-# 15. Working with AI (the harness the brief asks to see)
+# 14. Working with AI (the harness the brief asks to see)
 
 - **Commit CLAUDE.md** with the conventions and non-negotiables: the LLM never computes numbers; evidence is created only in evidence.py; every tool has tests; no new dependencies without a reason.
 
@@ -455,7 +455,7 @@ A case passes when every hard check passes. The report shows the pass rate overa
 - **Division of labour:** I write the contracts (schemas, tool signatures, system prompt, evidence rules). AI drafts the boilerplate (components, Pydantic models, test scaffolds). I review every diff before committing, because I need to be able to explain every line.
 
 
-# 16. Deliverables checklist
+# 15. Deliverables checklist
 
 ☐ Public GitHub repo, shared at least one day before the interview
 
