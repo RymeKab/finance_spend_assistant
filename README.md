@@ -1,5 +1,7 @@
 # Finance Spend Intelligence Assistant
 
+![The app answering "What are our top 5 vendors by total spend in 2025?": the 2025 overview on the left, the answer with its status badge and quoted policy clauses on the right](docs/screenshot.png)
+
 A small web app where a finance analyst asks questions about the 2025 vendor invoices and the procurement policy. Every answer shows what it is based on: the policy clauses, quoted word for word, and the invoice rows behind each figure.
 
 **Stack:** FastAPI · Pydantic · pandas · React · Vite · TypeScript · Claude (Anthropic API)
