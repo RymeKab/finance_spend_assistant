@@ -454,21 +454,8 @@ A case passes when every hard check passes. The report shows the pass rate overa
 
 - **Division of labour:** I write the contracts (schemas, tool signatures, system prompt, evidence rules). AI drafts the boilerplate (components, Pydantic models, test scaffolds). I review every diff before committing, because I need to be able to explain every line.
 
-# 16. Interview preparation
 
-**Five-minute demo:** the app loads with the summary → question 1, then open its evidence → question 3 (policy only) → question 4 (FX moves the tier) → question 9 (a decline that names the missing field) → show one request's log line and meta.
-
-| **Likely question**                               | **Short answer**                                                                                                                                                                                                 |
-|---------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Why no vector DB?                                 | The policy is 50 lines and already split into clause IDs, so retrieval would only add a failure mode. With a larger policy library I'd add clause-level retrieval, with the quotes still resolved by the server. |
-| Why not text-to-SQL?                              | Auditability and validation within the time box. It's the next step, behind a read-only allow-list, with the SQL shown as evidence.                                                                              |
-| How do you know it isn't hallucinating?           | The evidence is built by the server, and citation and numeric checks run on every answer, with any warnings shown in the UI. The eval set (§13) measures the rest.                                               |
-| How would you know a prompt change made it worse? | Run the eval (§13): the same 10 cases, 3 times each, compared against the last results file. If any should-decline case gets answered, the change is blocked.                                                    |
-| What if the model picks the wrong filters?        | The plain-English description of the computation is shown, so an analyst can spot it. A bad tool call gets one retry. The eval set catches regressions.                                                          |
-| What breaks first at 200 users?                   | Data freshness and access control, not the LLM. That's why permissions sit in the tool layer.                                                                                                                    |
-| What does a question cost?                        | Measured from the token counts in meta. Caching the static prefix is the main lever.                                                                                                                             |
-
-# 17. Deliverables checklist
+# 16. Deliverables checklist
 
 ☐ Public GitHub repo, shared at least one day before the interview
 
