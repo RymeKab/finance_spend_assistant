@@ -1,0 +1,16 @@
+# Backend dependencies (Python 3.11+). Install with: pip install -r requirements.txt
+
+# Web API
+fastapi>=0.115,<1.0
+uvicorn[standard]>=0.30
+
+# Claude
+anthropic>=0.49
+
+# Data handling and validation
+pandas>=2.2
+pydantic>=2.7
+
+# Tests (httpx is used by FastAPI's TestClient)
+pytest>=8.0
+httpx>=0.27
