@@ -82,7 +82,7 @@ follow." (The brief, data pack and policy were attached.)
 
 3. **Review against the policy:** I asked the AI to list places where the generated behaviour could be challenged against the policy or the brief. I went through its list, decided which points were real problems, and asked it to implement three of them (section 5).
 
-The runtime prompt the app sends to Claude is a separate, reviewed file: `backend/app/llm/prompts/system_v2.md` (version `ask-v2`). `system_v1.md` is kept so the change can be compared.
+The runtime prompt the app sends to Claude is a separate, reviewed file: `backend/app/llm/prompts/system_v3.md` (version `ask-v3`). `system_v1.md` and `system_v2.md` are kept so the changes can be compared.
 
 
 ## 3. What was checked while the code was generated
@@ -109,14 +109,14 @@ The runtime prompt the app sends to Claude is a separate, reviewed file: `backen
 
 ## 5. Where I overrode or corrected the AI
 
-I asked the AI to critique its own design against the policy, then decided which points to act on. Three changed the behaviour; a fourth, the exchange rates, came from my own review of the data. Each one is pinned by a test, so it can't quietly come back.
+I asked the AI to critique its own design against the policy, then decided which points to act on. Three changed the behaviour; a fourth, the exchange rates, came from my own review of the data. A fifth, showing the summary's exact amounts alongside the rounded ones, came from trying the UI myself. The first four are each pinned by a test, so they can't quietly come back; the fifth is display only and was checked by hand in a browser.
 
 ### Override 1: credit notes are no longer netted from spend (§6.1)
 
 - **What the AI did.** The generated tools reported spend *net* of the two credit notes (INV-20029 and INV-20096, both Helix Consulting AG, EUR -78,090.06), with an assumption saying so. The summary headline was the net figure.
 - **Why I changed it.** Policy §6.1 says a credit note must be matched to its original invoice before it is processed. The data has no link to the originals, so subtracting them treats unmatched documents as settled. That is the opposite of what an auditor wants. It also made Helix look smaller than it is in every ranking.
 - **What it does now.** Spend counts invoices only (138, EUR 6,964,721.16). The credit notes are reported separately: in the totals, next to their vendor in every grouped table, and in a standard assumption on every spend answer. A net figure is given only when the user explicitly asks for one (`net_credit_notes=true`), and then the answer says matching can't be confirmed.
-- **Files.** `tools/query_spend.py`, `tools/find_invoices.py`, `tools/__init__.py` (tool descriptions), `summary.py`, `schemas.py`, `evidence.py` (assumption text), `llm/prompts/system_v2.md`, `frontend/src/lib/types.ts`, `components/SummaryPanel.tsx`, `components/EvidencePanel.tsx`, `lib/format.ts`.
+- **Files.** `tools/query_spend.py`, `tools/find_invoices.py`, `tools/__init__.py` (tool descriptions), `summary.py`, `schemas.py`, `evidence.py` (assumption text), `llm/prompts/system_v3.md`, `frontend/src/lib/types.ts`, `components/SummaryPanel.tsx`, `components/EvidencePanel.tsx`, `lib/format.ts`.
 - **Tests.** `test_credit_notes_are_not_subtracted_by_default`, `test_credit_notes_are_shown_next_to_their_vendor`, `test_net_figure_only_on_request` (`test_tools.py`); `test_summary_totals_are_consistent`.
 
 ### Override 2: a missing PO is a breach only from EUR 1,000 (§2.1)
@@ -124,7 +124,7 @@ I asked the AI to critique its own design against the policy, then decided which
 - **What the AI did.** Any invoice with an empty PO field was flagged as a §2 exception, whatever its amount.
 - **Why I changed it.** §2.1 requires a PO only for purchases of EUR 1,000 or above. Flagging every blank field would overstate breaches and send people chasing invoices the policy allows. In this file all 21 invoices without a PO happen to be above EUR 1,000, so the count doesn't change. The rule does, and it would matter on the next file.
 - **What it does now.** The loader keeps the raw fact (`missing_po_ref`) and adds `po_required` (EUR amount ≥ 1,000, after conversion) and `missing_required_po` (the actual breach). The summary, the tools, the prompt and the UI use the breach flag. The threshold lives in one constant next to the approval bands, and a test checks it against the policy text.
-- **Files.** `policy/approval.py` (`PO_REQUIRED_FROM_EUR`), `data/loader.py`, `tools/filters.py`, `tools/find_invoices.py`, `summary.py`, `evidence.py`, `llm/prompts/system_v2.md`, `components/EvidencePanel.tsx`.
+- **Files.** `policy/approval.py` (`PO_REQUIRED_FROM_EUR`), `data/loader.py`, `tools/filters.py`, `tools/find_invoices.py`, `summary.py`, `evidence.py`, `llm/prompts/system_v3.md`, `components/EvidencePanel.tsx`.
 - **Tests.** `test_missing_po_below_eur_1000_is_not_a_breach` (removes the PO from a GBP 340.37 invoice and checks it isn't flagged), `test_credit_notes_never_require_a_po`, `test_po_threshold_matches_the_policy_text`.
 
 ### Override 3: an unverified figure turns "Answered" into "Partial"

@@ -1,6 +1,6 @@
 # Smoke questions
 
-Ask these in the UI with a real `key_1` after any change to the prompt, the tools or the model. Each one targets a trap found in the data review (see `plan.md` §3). This is a manual checklist. The automated eval set is designed in `plan.md` §13 but not built.
+Ask these in the UI with a real `key_1` after any change to the prompt, the tools or the model. Each one targets a trap found in the data review (see `plan.md` §3). This is a manual checklist. The automated eval set is designed in `plan.md` §12 but not built.
 
 | # | Question | Expected route | Clauses | A good answer must… |
 |---|---|---|---|---|

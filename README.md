@@ -34,11 +34,11 @@ A small web app where a finance analyst asks questions about the 2025 vendor inv
 
 ```bash
 cd backend
-python -m venv .venv
+python3 -m venv .venv
 source .venv/bin/activate            # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 cp .env.example .env                 # then open .env and set: key_1=<your Claude API key>
-uvicorn app.main:app --reload --port 8000
+python -m uvicorn app.main:app --reload --port 8000
 ```
 
 Check that it's running: <http://localhost:8000/health>. The interactive API docs are at <http://localhost:8000/docs>.
@@ -303,7 +303,7 @@ The priority throughout was an answer an analyst can verify, over breadth.
 
 - **Tool layer (done):** unit tests check every tool against an independent pandas reference (`tests/reference.py`) that never imports app code.
 - **Answer flow (done):** a scripted fake Claude exercises every path: happy path, policy-only, decline, corrections, removed citations, unverified figures (and the status downgrade they cause), the lookup limit, thinking blocks, deadlines, errors.
-- **Answer quality with the real model (designed, see `docs/plan.md` §13):** ten cases in four groups (data, policy, both, should-decline). Expected values come from the reference script. Scoring is deterministic: status, figures (±0.5%), required clauses, route and evidence rows. Each case runs three times, and a flaky case counts as failing. Answering a should-decline case is critical. Over-declining is an ordinary failure.
+- **Answer quality with the real model (designed, see `docs/plan.md` §12):** ten cases in four groups (data, policy, both, should-decline). Expected values come from the reference script. Scoring is deterministic: status, figures (±0.5%), required clauses, route and evidence rows. Each case runs three times, and a flaky case counts as failing. Answering a should-decline case is critical. Over-declining is an ordinary failure.
 - **Hallucinations in use:** the citation and numeric validators run on every answer. Their warning rate per prompt version is a live metric, read from the audit log.
 - **Over time:** grow to 30–50 cases labelled by finance experts. Add an LLM judge only after calibrating it against human labels. Gate every prompt or model change on the suite.
 
@@ -380,16 +380,18 @@ cd backend && pytest
 - I wrote the plan first (`docs/plan.md`), then built against it with an AI coding assistant. `docs/ai-workflow.md` records the prompts, what was checked and what was changed by hand.
 - `CLAUDE.md` gives the assistant the non-negotiables: the LLM never computes numbers, evidence is only created in `evidence.py`, every tool has tests, and the contract is changed in both `schemas.py` and `types.ts`.
 - The runtime prompt is a reviewed, versioned file (`system_v3.md`, `ask-v3`), and its version is returned with every answer.
-- I reviewed the generated design against the policy and changed four things by hand: credit notes are no longer netted (§6.1), a missing PO counts only from EUR 1,000 (§2.1), an unverified figure downgrades the answer to Partial, and the AI's placeholder exchange rates were replaced by the official ECB file I downloaded (§5.1). Each change has a test; see `docs/ai-workflow.md` §5.
+- I reviewed the generated design against the policy and changed five things by hand: four changed behaviour and one changed display. Credit notes are no longer netted (§6.1), a missing PO counts only from EUR 1,000 (§2.1), an unverified figure downgrades the answer to Partial, and the AI's placeholder exchange rates were replaced by the official ECB file I downloaded (§5.1). The summary displayed the exact amounts alongside the rounded ones. Each change has a test (except for the last one); see `docs/ai-workflow.md` §5.
 - The contracts (schemas, tool signatures, system prompt, evidence rules) were fixed in the plan before any code was generated. Generated code is checked by the test suite and reviewed before it is committed.
 
 ---
 
-## Next steps
+## Time taken and next steps
+
+Time taken: 3 hours 40 min, against a 3–4 hour time box.
 
 **What I'd do next, in order:**
 
-1. Build the eval runner (`evals/run_eval.py`) from the design in `docs/plan.md` §13.
+1. Build the eval runner (`evals/run_eval.py`) from the design in `docs/plan.md` §12.
 2. Add text-to-SQL behind a read-only allow-list, with the SQL shown as evidence.
 3. Add an approver-role mapping, so the assistant can verify authority (§3) instead of only naming the required level.
 4. Generate the TypeScript types from the OpenAPI schema, so the contract can't drift.
